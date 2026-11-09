@@ -1,0 +1,49 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Sample Vulnerable API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/workshop/api/vehicles": {
+      "get": {
+        "summary": "List vehicles owned by current user",
+        "responses": {
+          "200": {
+            "description": "Vehicle list"
+          }
+        }
+      }
+    },
+    "/workshop/api/vehicles/{id}": {
+      "get": {
+        "summary": "Get vehicle by ID",
+        "responses": {
+          "200": {
+            "description": "Vehicle detail"
+          }
+        }
+      }
+    },
+    "/orders/{order_id}": {
+      "get": {
+        "summary": "Get order by ID",
+        "responses": {
+          "200": {
+            "description": "Order detail"
+          }
+        }
+      }
+    },
+    "/cart/{cart_id}/items": {
+      "put": {
+        "summary": "Update cart item",
+        "responses": {
+          "200": {
+            "description": "Cart updated"
+          }
+        }
+      }
+    }
+  }
+}

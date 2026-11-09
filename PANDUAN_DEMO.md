@@ -20,11 +20,11 @@ Port lab kendaraan dipisahkan dari port crAPI. Launcher memeriksa identitas laya
 
 ## Demo pertama dari awal sampai bukti
 
-1. Pada tab Konfigurasi, pilih **Lab kendaraan privat** lalu **Gunakan konfigurasi**.
-2. Langkah Target API sudah terisi ke 127.0.0.1:8890. Klik Lanjut.
-3. Akun A dan B adalah akun sintetis berbeda. Klik Lanjut.
-4. Pemetaan objek sudah terisi: daftar kendaraan pemilik, ID kendaraan, pembacaan target, kebijakan privat, atribut VIN, dan identitas pengguna dari daftar terfilter. Klik Lanjut.
-5. Pada ringkasan, periksa target dan kebijakan; tidak ada password atau token ditampilkan. Klik **Jalankan pengujian**.
+1. Pada tab Konfigurasi, pilih **Lab kendaraan privat** lalu **Terapkan profil**.
+2. Bagian Target API sudah terisi ke 127.0.0.1:8890. Buka Akun pengujian.
+3. Akun A dan B adalah akun sintetis berbeda. Buka Objek & otorisasi.
+4. Pemetaan objek sudah terisi: daftar kendaraan pemilik, ID kendaraan, pembacaan target, kebijakan privat, atribut VIN, dan identitas pengguna dari daftar terfilter. Buka Ringkasan.
+5. Buka Ringkasan, periksa target dan kebijakan; tidak ada password atau token ditampilkan. Klik **Jalankan pengujian**.
 6. Tunggu respons engine. Tab Hasil pengujian menampilkan **Indikasi BOLA**, objek veh_1021, dan kedua respons HTTP 200. ID serta VIN yang sama dapat dibaca oleh dua pengguna berbeda.
 7. Buka **Alasan teknis dari engine**, **Lihat respons JSON**, dan **Permintaan reproduksi curl** jika diperlukan. Field ringkasan adalah bukti, bukan pengganti dasar kepemilikan dan kebijakan.
 8. Buka **Berkas laporan lokal** untuk melihat lokasi laporan. Lokasi relatif terhadap folder aplikasi; buka folder reports menggunakan File Explorer. Tidak ada tombol unduh atau upload internet yang disimulasikan.
@@ -33,7 +33,7 @@ Kalimat penjelasan saat demo: “Tool memakai objek yang diketahui pemiliknya da
 
 ## Dua pembanding dengan HTTP yang sama
 
-- Pilih **Kontrol objek publik** dan muat konfigurasi. Pada langkah 4 jalankan scan. Kedua pengguna menerima HTTP 200 dengan objek sama, tetapi hasilnya **Tidak terindikasi pada kasus ini** karena kebijakan mengizinkan akses.
+- Pilih **Kontrol objek publik** dan muat konfigurasi. Buka Ringkasan lalu jalankan scan. Kedua pengguna menerima HTTP 200 dengan objek sama, tetapi hasilnya **Tidak terindikasi pada kasus ini** karena kebijakan mengizinkan akses.
 - Pilih **Kontrol HTTP 200** dan muat konfigurasi. Scan menghasilkan **Tidak terindikasi pada kasus ini** karena respons pengguna B berupa penolakan tanpa objek target, meskipun statusnya HTTP 200.
 - Jika password akun B sengaja diubah menjadi nilai yang salah lalu scan dijalankan, hasilnya **Belum dapat disimpulkan**. Kegagalan login tidak membuktikan endpoint aman.
 
@@ -53,7 +53,7 @@ Kasus tidak konklusif tetap dipisahkan dari confusion matrix. Skor dari satu kas
 
 ## API sendiri dan crAPI
 
-Pilih API sendiri lalu isi target, akun, mapping objek, JSON path, dan kebijakan yang ditinjau. Konfigurasi sebelumnya tetap berada dalam formulir dan harus diperiksa sebelum diganti ke target lain. Untuk login berbasis username, buka pengaturan autentikasi lanjutan. OpenAPI opsional dapat dipakai menemukan kandidat; ia tidak menetapkan seluruh kebijakan otomatis. Seluruh scan dashboard memakai GET dan timeout 10 detik, termasuk preset kontrol. Ini berbeda dari anggaran 1 detik pada harness kontrol penelitian.
+Pilih Target kustom, klik Terapkan profil, lalu isi target, akun, mapping objek, JSON path, dan kebijakan yang ditinjau. Konfigurasi sebelumnya tetap berada dalam formulir dan harus diperiksa sebelum diganti ke target lain. Untuk login berbasis username, buka pengaturan autentikasi lanjutan. OpenAPI opsional dapat dipakai menemukan kandidat; ia tidak menetapkan seluruh kebijakan otomatis. Seluruh scan dashboard memakai GET dan timeout 10 detik, termasuk preset kontrol. Ini berbeda dari anggaran 1 detik pada harness kontrol penelitian.
 
 Demo bawaan tidak memerlukan Docker. crAPI sebenarnya tetap memerlukan Docker, akun/objek pada instance yang benar, serta pemeriksaan ulang pemetaan katalog. Evaluasi utama 40 kasus crAPI dan 16 kontrol tetap terpisah, menunggu tinjauan label dan pembekuan konfigurasi. Dashboard manual bukan pengganti harness evaluasi massal.
 

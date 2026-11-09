@@ -53,8 +53,7 @@ function displayError(error) {
 }
 function showStep(step) {
   currentStep=step;
-  for(let n=1;n<=4;n++) {$('#step-'+n).hidden=n!==step;const b=$('[data-step="'+n+'"]');b.classList.toggle('complete',n<step);if(n===step)b.setAttribute('aria-current','step');else b.removeAttribute('aria-current');}
-  $('#backButton').hidden=step===1;$('#nextButton').hidden=step===4;$('#runButton').hidden=step!==4;$('#stepCaption').textContent='Langkah '+step+' dari 4';
+  for(let n=1;n<=4;n++) {$('#step-'+n).hidden=n!==step;const b=$('[data-step="'+n+'"]');if(n===step)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');}
   if(step===4) renderReview();
 }
 function navigateStep(next) {
@@ -210,9 +209,9 @@ async function discoverCandidates(){
   try{const spec=parseOpenApiSpec(true);if(!spec)throw new Error('Isi OpenAPI JSON terlebih dahulu.');const res=await fetch('/api/openapi/discover',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({openapi_spec:spec})});const data=await res.json();if(!res.ok||!data.ok)throw new Error(data.error||'Penemuan kandidat gagal.');discoveredCandidates=data.candidates||[];box.innerHTML=discoveredCandidates.length?`<p>${discoveredCandidates.length} kandidat ditemukan. Maksimal 8 ditampilkan.</p>`+discoveredCandidates.slice(0,8).map(c=>`<div class="candidate-item"><strong>${escapeHtml(c.method)} ${escapeHtml(c.path)}</strong><span>${escapeHtml(c.risk_hint)}</span></div>`).join(''):'Tidak ada kandidat endpoint berparameter objek.';}catch(e){box.textContent=e.message;}finally{$('#discoverButton').disabled=scanRunning;}
 }
 function setBusy(busy){
-  scanRunning=busy;$$('#scanForm input, #scanForm select, #scanForm textarea, #scanForm button, .stepper button').forEach(e=>e.disabled=busy);
+  scanRunning=busy;$$('#scanForm input, #scanForm select, #scanForm textarea, #scanForm button, .config-nav button').forEach(e=>e.disabled=busy);
   for(const id of ['runButton','clearButton','loadPreset','labPreset','groundTruth','discoverButton'])$('#'+id).disabled=busy;
-  $('#runningNotice').hidden=!busy;$('#runButton').textContent=busy?'Sedang menguji…':'Jalankan pengujian →';
+  $('#runningNotice').hidden=!busy;$('#runButton').textContent=busy?'Sedang menguji…':'Jalankan pengujian';
   $('#scanEmpty').hidden=busy||Boolean(findings.length);
 }
 function resetResultState(){findings=[];reportPaths={};metrics=null;selectedFinding=0;renderFindings();renderMetrics();$('#findingDetail').innerHTML='<p class="muted">Pilih kasus untuk melihat bukti.</p>';$('#reportSection').hidden=true;$('#reportLocations').innerHTML='';$('#resultBanner').hidden=true;}
@@ -235,8 +234,7 @@ $('#scanForm').addEventListener('submit',runConfiguredScan);
 $('#clearButton').addEventListener('click',clearResults);$('#discoverButton').addEventListener('click',discoverCandidates);
 $$('[data-tab]').forEach(b=>{b.addEventListener('click',()=>switchTab(b.dataset.tab));b.addEventListener('keydown',e=>{const tabs=['config','results','evaluation'];if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const i=tabs.indexOf(currentTab);switchTab(e.key==='Home'?tabs[0]:e.key==='End'?tabs[2]:tabs[(i+(e.key==='ArrowRight'?1:2))%3],true);}});});
 $$('[data-step]').forEach(b=>b.addEventListener('click',()=>navigateStep(Number(b.dataset.step))));
-$('#nextButton').addEventListener('click',()=>navigateStep(currentStep+1));$('#backButton').addEventListener('click',()=>navigateStep(currentStep-1));$('#loadPreset').addEventListener('click',loadPreset);
+$('#loadPreset').addEventListener('click',loadPreset);
 for(const id of ['editConfigButton','emptyConfigureButton','evaluationConfigButton'])$('#'+id).addEventListener('click',()=>switchTab('config'));
-$('#guideButton').addEventListener('click',()=>{$('#quickGuide').open=!$('#quickGuide').open;});
-$('#scanForm').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT'){e.preventDefault();if(!scanRunning&&currentStep<4)navigateStep(currentStep+1);}});
+$('#scanForm').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT')e.preventDefault();});
 renderFindings();renderMetrics();showStep(1);checkBackend();

@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import time
+from uuid import uuid4
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 
 from bola_fuzzer.academic_reporter import write_academic_report
 from bola_fuzzer.config import parse_config
@@ -17,6 +19,8 @@ from bola_fuzzer.openapi_parser import (
 )
 from bola_fuzzer.reporter import write_reports
 from bola_fuzzer.scanner import BolaScanner
+from bola_fuzzer.preflight import check_target
+from bola_fuzzer.run_record import VERSION, write_run_record
 from bola_fuzzer.serializer import candidates_to_dicts, dependencies_to_dicts, findings_to_dicts, metrics_to_dict
 
 
@@ -30,7 +34,10 @@ class BolaFuzzerHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:
         path = urlparse(self.path).path
         if path == "/api/health":
-            self.send_json({"ok": True, "service": "bola-fuzzer"})
+            self.send_json({"ok": True, "service": "bola-fuzzer", "version": VERSION})
+            return
+        if path.startswith('/api/reports/'):
+            self.serve_report(unquote(path[len('/api/reports/'):]))
             return
         if path == "/api/lab-validation":
             findings, report_paths = run_mock_lab()
@@ -50,6 +57,32 @@ class BolaFuzzerHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         path = urlparse(self.path).path
+        if path == '/api/configuration/export':
+            try:
+                payload = self.read_json()
+                allowed = ('baseUrl','loginEndpoint','tokenPath','usernameField','userAEmail','userBEmail',
+                           'sourceEndpoint','sourceIdPath','targetEndpoint','objectParameter','accessPolicy',
+                           'identityPaths','privatePaths','sessionEndpoint','sessionIdPath','openApiSpec')
+                fields = {key: payload['fields'][key] for key in allowed}
+                if any(not isinstance(value, str) for value in fields.values()):
+                    raise ValueError('Configuration fields must be strings')
+                # Only the allowlisted mapping is persisted. Passwords/truth are never copied.
+                data = {'schema_version': 1, 'fields': fields,
+                        'auto_discover': payload.get('auto_discover') is True}
+                report = ROOT/'reports'/('configuration-'+uuid4().hex+'.json')
+                report.parent.mkdir(parents=True, exist_ok=True)
+                report.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding='utf-8')
+                self.send_json({'ok': True, 'download': '/api/reports/'+report.name})
+            except Exception as exc:
+                self.send_json({'ok': False, 'error': str(exc)}, status=400)
+            return
+        if path == '/api/preflight':
+            try:
+                payload = self.read_json()
+                self.send_json({'ok': True, **check_target(parse_config(payload))})
+            except Exception as exc:
+                self.send_json({'ok': False, 'error': str(exc)}, status=400)
+            return
         if path == "/api/openapi/discover":
             self.handle_openapi_discovery()
             return
@@ -108,26 +141,57 @@ class BolaFuzzerHandler(BaseHTTPRequestHandler):
                 evaluate_findings([], ground_truth)  # Validate Boolean labels before network execution.
                 if {t.name for t in config.tests} - set(ground_truth):
                     raise ValueError("Ground truth keys must cover all case names; endpoint-keyed labels are not supported")
-            findings = BolaScanner(config).run()
-            report_paths = write_reports(findings)
+            scanner = BolaScanner(config)
+            telemetry = {'attempted_requests': 0, 'elapsed_seconds': 0}
+            original_request = scanner.http.request
+            def counted_request(*args, **kwargs):
+                telemetry['attempted_requests'] += 1
+                return original_request(*args, **kwargs)
+            scanner.http.request = counted_request
+            started = time.perf_counter()
+            findings = scanner.run()
+            telemetry['elapsed_seconds'] = round(time.perf_counter() - started, 6)
+            report_paths = write_reports(findings, ROOT/'reports')
             ground_truth = payload.get("ground_truth") or {}
             metrics = evaluate_findings(findings, ground_truth) if ground_truth else None
-            academic_report = write_academic_report(findings, config.tests, dependencies, metrics)
+            academic_report = write_academic_report(findings, config.tests, dependencies, metrics, ROOT/'reports')
+            record_path = write_run_record(ROOT, config, findings, telemetry, metrics)
             self.send_json(
                 {
                     "ok": True,
                     "mode": "target",
                     "findings": findings_to_dicts(findings),
                     "metrics": metrics_to_dict(metrics),
+                    "telemetry": telemetry,
                     "reports": {
                         "markdown": str(report_paths[0]),
                         "html": str(report_paths[1]),
                         "academic": str(academic_report),
+                        "evidence": str(record_path),
                     },
+                    "downloads": {key: '/api/reports/'+Path(path).name for key, path in {
+                        'markdown': report_paths[0], 'html': report_paths[1],
+                        'academic': academic_report, 'evidence': record_path}.items()},
                 }
             )
         except Exception as exc:
             self.send_json({"ok": False, "error": str(exc)}, status=400)
+
+    def serve_report(self, name: str) -> None:
+        folder = (ROOT/'reports').resolve()
+        candidate = (folder/name).resolve()
+        if (not name or '/' in name or '\\' in name or candidate.parent != folder
+                or candidate.suffix not in {'.md', '.html', '.json'} or not candidate.is_file()):
+            self.send_json({'ok': False, 'error': 'Report not found'}, status=404)
+            return
+        data = candidate.read_bytes()
+        self.send_response(200)
+        self.send_header('Content-Type', 'application/octet-stream')
+        self.send_header('Content-Disposition', 'attachment; filename="'+candidate.name+'"')
+        self.send_header('Content-Length', str(len(data)))
+        self.send_header('Cache-Control', 'no-store')
+        self.end_headers()
+        self.wfile.write(data)
 
     def serve_static(self, request_path: str) -> None:
         if request_path == "/":

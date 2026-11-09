@@ -5,11 +5,12 @@ const $ = selector => document.querySelector(selector);
 const $$ = selector => Array.from(document.querySelectorAll(selector));
 function escapeHtml(value) { return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;'); }
 const LAB_PRESETS = {
+  crapi: {baseUrl:'http://127.0.0.1:8888',loginEndpoint:'/identity/api/auth/login',tokenPath:'token',usernameField:'email',userAEmail:'',userAPassword:'',userBEmail:'',userBPassword:'',sourceEndpoint:'/identity/api/v2/vehicle/vehicles',sourceIdPath:'$[0].uuid',targetEndpoint:'/identity/api/v2/vehicle/{vehicleId}/location',objectParameter:'vehicleId',accessPolicy:'private',identityPaths:'$.carId',privatePaths:'$.email, $.vehicleLocation',sessionEndpoint:'/identity/api/v2/user/dashboard',sessionIdPath:'$.id'},
   vehicle: {baseUrl:'http://127.0.0.1:8890',loginEndpoint:'/identity/api/auth/login',tokenPath:'token',usernameField:'email',userAEmail:'user-a@example.com',userAPassword:'password',userBEmail:'user-b@example.com',userBPassword:'password',sourceEndpoint:'/workshop/api/vehicles',sourceIdPath:'$[0].id',targetEndpoint:'/workshop/api/vehicles/{id}',objectParameter:'id',accessPolicy:'private',identityPaths:'$.id',privatePaths:'$.vin',sessionEndpoint:'/workshop/api/vehicles',sessionIdPath:'$[0].owner'},
   public: {baseUrl:'http://127.0.0.1:8899',loginEndpoint:'/login',tokenPath:'token',usernameField:'username',userAEmail:'A',userAPassword:'control-only-password',userBEmail:'B',userBPassword:'control-only-password',sourceEndpoint:'/cases/public/objects',sourceIdPath:'$[0].id',targetEndpoint:'/cases/public/objects/{id}',objectParameter:'id',accessPolicy:'public',identityPaths:'$.id',privatePaths:'',sessionEndpoint:'/me',sessionIdPath:'$.id'},
   error200: {baseUrl:'http://127.0.0.1:8899',loginEndpoint:'/login',tokenPath:'token',usernameField:'username',userAEmail:'A',userAPassword:'control-only-password',userBEmail:'B',userBPassword:'control-only-password',sourceEndpoint:'/cases/error200/objects',sourceIdPath:'$[0].id',targetEndpoint:'/cases/error200/objects/{id}',objectParameter:'id',accessPolicy:'private',identityPaths:'$.id',privatePaths:'$.private_note',sessionEndpoint:'/me',sessionIdPath:'$.id'}
 };
-const presetNames = {vehicle:'Lab kendaraan privat · data sintetis',public:'Kontrol objek publik · data sintetis',error200:'Kontrol HTTP 200 berisi penolakan · data sintetis'};
+const presetNames = {crapi:'crAPI · lokasi kendaraan privat',vehicle:'Lab kendaraan privat · data sintetis',public:'Kontrol objek publik · data sintetis',error200:'Kontrol HTTP 200 berisi penolakan · data sintetis'};
 function switchTab(tab, focus=false) {
   currentTab=tab;
   for(const name of ['config','results','evaluation']) {
@@ -64,7 +65,8 @@ function loadPreset() {
   if(scanRunning)return;const choice=$('#labPreset').value;if(choice==='custom'){$('#presetNote').textContent='Isi konfigurasi API laboratorium sendiri. Konfigurasi yang ada tetap dipertahankan.';return;}
   for(const [key,value] of Object.entries(LAB_PRESETS[choice]))$('#'+key).value=value;
   $('#autoDiscover').checked=false;$('#openApiSpec').value='';$('#groundTruth').value='';discoveredCandidates=[];$('#candidateBox').textContent='Belum ada kandidat.';
-  $('#presetNote').textContent=presetNames[choice]+'. Konfigurasi dimuat; belum ada permintaan scan yang dikirim. Ground truth opsional dikosongkan agar tidak memakai label kasus sebelumnya.';
+  $('#presetNote').textContent=presetNames[choice]+(choice==='crapi'?'. Isi dua akun yang terdaftar pada crAPI. Pastikan container aktif.':'. Konfigurasi dimuat; belum ada pengujian dijalankan.');
+  $('#preflightResult').hidden=true;
   clearValidation();showStep(1);switchTab('config');
 }
 function renderReview() {
@@ -201,7 +203,9 @@ function appendLog(line){$('#scanLog').textContent+=line+'\n';}
 function resetLog(line){$('#scanLog').textContent=line+'\n';}
 function applyApiResult(data){
   findings=(data.findings||[]).map(normalizeFinding);reportPaths=data.reports||{};metrics=data.metrics||null;selectedFinding=0;renderFindings();renderMetrics();
-  $('#reportSection').hidden=!Object.keys(reportPaths).length;$('#reportLocations').innerHTML=Object.entries(reportPaths).map(([k,v])=>`<p>${escapeHtml(k)}<code>${escapeHtml(v)}</code></p>`).join('');
+  const labels={html:'Laporan HTML',markdown:'Laporan Markdown',academic:'Laporan akademik',evidence:'Bukti & rekaman eksekusi JSON'};
+  $('#reportSection').hidden=!Object.keys(reportPaths).length;$('#reportLocations').innerHTML=Object.entries(reportPaths).map(([k,v])=>{const url=data.downloads?.[k];return `<p>${url&&/^\/api\/reports\/[A-Za-z0-9_.-]+$/.test(url)?`<a class="secondary-button" href="${escapeHtml(url)}" download>${escapeHtml(labels[k]||k)}</a>`:escapeHtml(k)}<code>${escapeHtml(v)}</code></p>`;}).join('');
+  $('#runTelemetry').textContent=data.telemetry?`${data.telemetry.attempted_requests} permintaan HTTP dicoba · ${data.telemetry.elapsed_seconds} detik · waktu pengiriman sampai analisis, di luar penulisan laporan`:'';
   appendLog(`[hasil] ${findings.length} kasus; ${findings.filter(f=>f.status==='Potential BOLA').length} indikasi BOLA.`);
 }
 async function discoverCandidates(){
@@ -210,11 +214,11 @@ async function discoverCandidates(){
 }
 function setBusy(busy){
   scanRunning=busy;$$('#scanForm input, #scanForm select, #scanForm textarea, #scanForm button, .config-nav button').forEach(e=>e.disabled=busy);
-  for(const id of ['runButton','clearButton','loadPreset','labPreset','groundTruth','discoverButton'])$('#'+id).disabled=busy;
+  for(const id of ['runButton','clearButton','loadPreset','labPreset','groundTruth','discoverButton','preflightButton','exportConfigButton','importConfigButton','configFile'])$('#'+id).disabled=busy;
   $('#runningNotice').hidden=!busy;$('#runButton').textContent=busy?'Sedang menguji…':'Jalankan pengujian';
   $('#scanEmpty').hidden=busy||Boolean(findings.length);
 }
-function resetResultState(){findings=[];reportPaths={};metrics=null;selectedFinding=0;renderFindings();renderMetrics();$('#findingDetail').innerHTML='<p class="muted">Pilih kasus untuk melihat bukti.</p>';$('#reportSection').hidden=true;$('#reportLocations').innerHTML='';$('#resultBanner').hidden=true;}
+function resetResultState(){findings=[];reportPaths={};metrics=null;selectedFinding=0;renderFindings();renderMetrics();$('#findingDetail').innerHTML='<p class="muted">Pilih kasus untuk melihat bukti.</p>';$('#reportSection').hidden=true;$('#reportLocations').innerHTML='';$('#runTelemetry').textContent='';$('#resultBanner').hidden=true;}
 async function runConfiguredScan(event){
   event.preventDefault();if(scanRunning)return;clearValidation();resetResultState();resetLog('[scan] Memeriksa konfigurasi.');
   let config;
@@ -229,12 +233,48 @@ async function runConfiguredScan(event){
   finally{setBusy(false);checkBackend();}
 }
 function clearResults(){if(scanRunning)return;resetResultState();resetLog('Hasil dibersihkan. Konfigurasi tetap tersedia.');setScanState('Siap');$('#resultContext').textContent='Belum ada hasil pengujian aktif.';}
-async function checkBackend(){const el=$('#backendState');try{const res=await fetch('/api/health',{cache:'no-store'});const data=await res.json();if(!res.ok||data.ok!==true||data.service!=='bola-fuzzer')throw new Error();el.textContent='Engine terhubung';el.className='status-pill good';}catch{el.textContent='Engine tidak terhubung';el.className='status-pill danger';}}
+async function checkBackend(){const el=$('#backendState');try{const res=await fetch('/api/health',{cache:'no-store'});const data=await res.json();if(!res.ok||data.ok!==true||data.service!=='bola-fuzzer')throw new Error();el.textContent='Engine terhubung'+(data.version?' · '+data.version:'');el.className='status-pill good';}catch{el.textContent='Engine tidak terhubung';el.className='status-pill danger';}}
+
+async function preflight(){
+  if(scanRunning)return;clearValidation();let config;
+  try{config=collectConfig();}catch(e){displayError(e);return;}
+  const box=$('#preflightResult');box.hidden=false;box.textContent='Memeriksa target, autentikasi, dan pemetaan objek…';box.className='notice';setBusy(true);
+  try{const res=await fetch('/api/preflight',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(config)});const data=await res.json();if(!res.ok||!data.ok)throw new Error(data.error||'Pemeriksaan gagal.');box.className='notice '+(data.ready?'success':'warning');box.innerHTML=`<strong>${data.ready?'Target siap':'Target belum siap'}</strong><p>${escapeHtml(data.message)}</p><ul>${(data.checks||[]).map(c=>`<li>${c.ok?'✓':'!'} ${escapeHtml(c.name)}${c.detail?' — '+escapeHtml(c.detail):''}</li>`).join('')}</ul>`;}catch(e){box.className='notice error';box.textContent='Pemeriksaan gagal: '+e.message;}finally{setBusy(false);}
+}
+const CONFIG_FIELDS=['baseUrl','loginEndpoint','tokenPath','usernameField','userAEmail','userBEmail','sourceEndpoint','sourceIdPath','targetEndpoint','objectParameter','accessPolicy','identityPaths','privatePaths','sessionEndpoint','sessionIdPath','openApiSpec'];
+async function exportConfiguration(){
+  if(scanRunning)return;
+  const fields=Object.fromEntries(CONFIG_FIELDS.map(id=>[id,$('#'+id).value]));
+  const data={schema_version:1,fields,auto_discover:$('#autoDiscover').checked};
+  $('#exportConfigButton').disabled=true;
+  try{const res=await fetch('/api/configuration/export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});const result=await res.json();if(!res.ok||!result.ok||!/^\/api\/reports\/[A-Za-z0-9_.-]+$/.test(result.download))throw new Error(result.error||'Ekspor tidak tersedia.');
+    $('#configurationStatus').innerHTML=`<a href="${escapeHtml(result.download)}" download>Unduh konfigurasi JSON</a> · Password dan label acuan tidak disertakan.`;
+  }catch(e){$('#configurationStatus').textContent='Ekspor gagal: '+e.message;}finally{$('#exportConfigButton').disabled=scanRunning;}
+}
+function applyImportedConfiguration(data){
+  if(data?.schema_version!==1||!data.fields||typeof data.fields!=='object'||Array.isArray(data.fields))throw new Error('Format konfigurasi tidak didukung.');
+  for(const id of CONFIG_FIELDS)if(typeof data.fields[id]!=='string')throw new Error('Konfigurasi tidak lengkap: '+id);
+  if(!['email','username'].includes(data.fields.usernameField)||!['unknown','private','public','shared'].includes(data.fields.accessPolicy)||typeof data.auto_discover!=='boolean')throw new Error('Pilihan konfigurasi tidak valid.');
+  const url=new URL(data.fields.baseUrl);if(!['http:','https:'].includes(url.protocol)||url.username||url.password)throw new Error('Alamat target tidak valid.');
+  for(const id of CONFIG_FIELDS)$('#'+id).value=data.fields[id];
+  $('#userAPassword').value='';$('#userBPassword').value='';$('#groundTruth').value='';$('#autoDiscover').checked=data.auto_discover;$('#labPreset').value='custom';
+  $('#presetNote').textContent='Konfigurasi diimpor. Isi kembali password dua akun sebelum pemeriksaan.';$('#preflightResult').hidden=true;
+  clearValidation();showStep(1);switchTab('config');
+}
+async function importConfiguration(event){
+  if(scanRunning)return;const file=event.target.files?.[0];if(!file)return;
+  try{if(file.size>1024*1024)throw new Error('Berkas konfigurasi maksimal 1 MB.');applyImportedConfiguration(JSON.parse(await file.text()));$('#configurationStatus').textContent='Konfigurasi berhasil diimpor; password dan label acuan dikosongkan.';}catch(e){$('#configurationStatus').textContent='Impor gagal: '+e.message;}finally{event.target.value='';}
+}
 $('#scanForm').addEventListener('submit',runConfiguredScan);
 $('#clearButton').addEventListener('click',clearResults);$('#discoverButton').addEventListener('click',discoverCandidates);
 $$('[data-tab]').forEach(b=>{b.addEventListener('click',()=>switchTab(b.dataset.tab));b.addEventListener('keydown',e=>{const tabs=['config','results','evaluation'];if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const i=tabs.indexOf(currentTab);switchTab(e.key==='Home'?tabs[0]:e.key==='End'?tabs[2]:tabs[(i+(e.key==='ArrowRight'?1:2))%3],true);}});});
 $$('[data-step]').forEach(b=>b.addEventListener('click',()=>navigateStep(Number(b.dataset.step))));
 $('#loadPreset').addEventListener('click',loadPreset);
+$('#preflightButton').addEventListener('click',preflight);
+$('#exportConfigButton').addEventListener('click',exportConfiguration);
+$('#importConfigButton').addEventListener('click',()=>$('#configFile').click());
+$('#configFile').addEventListener('change',importConfiguration);
+$('#scanForm').addEventListener('input',()=>{$('#preflightResult').hidden=true;});
 for(const id of ['editConfigButton','emptyConfigureButton','evaluationConfigButton'])$('#'+id).addEventListener('click',()=>switchTab('config'));
 $('#scanForm').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.tagName==='INPUT')e.preventDefault();});
 renderFindings();renderMetrics();showStep(1);checkBackend();

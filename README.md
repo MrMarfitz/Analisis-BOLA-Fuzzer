@@ -1,12 +1,16 @@
 # Analisis BOLA Fuzzer
 
+Rilis aplikasi lokal **1.0.0**. [Pengoperasian dan batas produk](docs/RILIS_LOKAL.md) · [Protokol evaluasi dan baseline](docs/PROTOKOL_EVALUASI.md).
+
 BOLA Fuzzer memeriksa apakah pengguna lain dapat membaca objek yang seharusnya privat. Tool mengambil ID objek dari akun pemilik, mengirim permintaan pembacaan yang sama dengan dua sesi, lalu menilai kecocokan objek dan atribut privat berdasarkan kebijakan akses yang dikonfigurasi. Dashboard menyajikan respons kedua akun, bukti, dan alasan keputusan.
 
 ## Menjalankan dashboard lokal
 
 Siapkan Python 3.10 atau lebih baru. Dari folder repo, jalankan `python run_lab.py --open` atau klik dua kali `Mulai-Lab.cmd` di Windows. Biarkan terminal tetap terbuka, lalu kunjungi [dashboard](http://127.0.0.1:8081/). Launcher juga menyiapkan dua API kontrol lokal. Demo bawaan memakai pustaka standar Python.
 
-Pilih **Lab kendaraan privat**, klik **Terapkan profil**, lalu buka **Ringkasan** dan klik **Jalankan pengujian**. Form terdiri atas bagian **Target API**, **Akun pengujian**, **Objek & otorisasi**, dan **Ringkasan**. Pada hasil, lihat status **Indikasi BOLA**, identitas sesi, serta ID dan VIN pada kedua respons. Gunakan profil **Kontrol objek publik** untuk melihat bagaimana dua respons HTTP 200 dapat menghasilkan keputusan berbeda. [Panduan demo lengkap](PANDUAN_DEMO.md)
+Pilih **Lab kendaraan privat**, klik **Terapkan profil**, lalu buka **Ringkasan**. Klik **Periksa kesiapan target**, kemudian **Jalankan pengujian**. Form terdiri atas bagian **Target API**, **Akun pengujian**, **Objek & otorisasi**, dan **Ringkasan**. Pada hasil, lihat keputusan, identitas sesi, serta ID dan atribut privat pada kedua respons. Gunakan profil **Kontrol objek publik** untuk melihat bagaimana dua respons HTTP 200 dapat menghasilkan keputusan berbeda. [Panduan demo lengkap](PANDUAN_DEMO.md)
+
+Konfigurasi dapat diekspor melalui tautan unduhan JSON dan diimpor kembali tanpa menyimpan password atau label acuan. Hasil menyediakan unduhan HTML, Markdown, laporan akademik, serta JSON bukti lengkap dengan konfigurasi tanpa password, hash source, jumlah permintaan, dan waktu eksekusi. Laporan bertahan di folder `reports` setelah halaman ditutup.
 
 ## Peran scanner, crAPI, dan Docker
 
@@ -16,7 +20,7 @@ Halaman crAPI tidak harus terbuka di browser, tetapi server target harus tetap b
 
 ## Menguji crAPI
 
-Siapkan [OWASP crAPI](https://github.com/OWASP/crAPI) di Docker lokal dengan dua akun uji dan kendaraan yang terdaftar. Untuk instalasi yang memakai nama container standar dan port loopback 8888, jalankan `python run_crapi_demo.py` atau `Mulai-crAPI-Demo.cmd` untuk menyalakan container yang sudah tersedia. Launcher tidak memasang crAPI atau membuat akun baru. Di dashboard, pilih **Target kustom**, klik **Terapkan profil**, lalu isi target `http://127.0.0.1:8888` serta kredensial akun uji milik sendiri. Pilihan ini mempertahankan isian sebelumnya; periksa seluruh konfigurasi sebelum menjalankan.
+Siapkan [OWASP crAPI](https://github.com/OWASP/crAPI) di Docker lokal dengan dua akun uji dan kendaraan yang terdaftar. Untuk instalasi yang memakai nama container standar dan port loopback 8888, jalankan `python run_crapi_demo.py` atau `Mulai-crAPI-Demo.cmd` untuk menyalakan container yang sudah tersedia. Launcher tidak memasang crAPI atau membuat akun baru. Di dashboard, pilih **crAPI · lokasi kendaraan privat**, klik **Terapkan profil**, lalu isi kredensial dua akun uji milik sendiri. Profil mengisi pemetaan di bawah dan mengosongkan kredensial. **Target kustom** tetap tersedia untuk pemetaan lain dan mempertahankan isian sebelumnya.
 
 | Kolom | Nilai untuk lokasi kendaraan |
 |---|---|

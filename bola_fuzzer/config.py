@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any
 import json
+from urllib.parse import urlparse
 
 from bola_fuzzer.models import AppConfig, AuthConfig, TargetConfig, TestCase, UserCredential
 
@@ -65,12 +66,26 @@ def parse_config(data: dict[str, Any]) -> AppConfig:
         )
         for item in data.get("tests", [])
     ]
+    url = urlparse(target.base_url)
+    if url.scheme not in {'http', 'https'} or not url.hostname or url.username or url.password:
+        raise ValueError('Target must be an HTTP(S) URL without embedded credentials')
+    if not tests:
+        raise ValueError('At least one configured test case is required')
+    if not all(u.username.strip() and u.password for u in (user_a, user_b)):
+        raise ValueError('Two registered accounts and passwords are required')
+    if user_a.username == user_b.username:
+        raise ValueError('Two different user accounts are required')
     names = [t.name for t in tests]
     if len(names) != len(set(names)) or any(not n for n in names):
         raise ValueError("Test case names must be unique and nonempty")
     if target.timeout_seconds <= 0:
         raise ValueError("timeout_seconds must be positive")
     for test in tests:
+        if test.method != 'GET':
+            raise ValueError('This application supports GET object reads only')
+        for endpoint in (auth.login_endpoint, test.source_endpoint, test.target_endpoint, test.session_endpoint):
+            if not endpoint.startswith('/') or endpoint.startswith('//') or urlparse(endpoint).netloc:
+                raise ValueError('Endpoints must be relative paths on the configured target')
         if test.access_policy not in {"unknown", "private", "public", "shared"}:
             raise ValueError("Invalid access_policy")
         if "{" + test.object_parameter + "}" not in test.target_endpoint:

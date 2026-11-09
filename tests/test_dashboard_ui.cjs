@@ -56,5 +56,14 @@ function setup() {
   t=setup();t.element('#labPreset').value='public';t.element('#groundTruth').value='{"old":true}';t.run('loadPreset()');
   assert.equal(t.element('#usernameField').value,'username');assert.equal(t.element('#groundTruth').value,'','preset change clears incompatible labels');
   t=setup();t.run('applyApiResult({findings:[{status:"Potential BOLA",endpoint:"<script>alert(1)</script>",evidence:{}}]})');assert.ok(!t.element('#findingTable').innerHTML.includes('<script>'),'HTML injection escaped');
+  t=setup();t.element('#labPreset').value='crapi';t.run('loadPreset()');
+  assert.equal(t.element('#baseUrl').value,'http://127.0.0.1:8888');
+  assert.equal(t.element('#userAPassword').value,'','crAPI profile must not carry lab credentials');
+  t=setup();
+  const imported=t.run('({schema_version:1,fields:Object.fromEntries(CONFIG_FIELDS.map(id=>[id,$("#"+id).value])),auto_discover:false})');
+  t.ctx.imported=imported;t.run('applyImportedConfiguration(imported)');
+  assert.equal(t.element('#userAPassword').value,'');assert.equal(t.element('#groundTruth').value,'');
+  t=setup();t.run('applyApiResult({findings:[],reports:{html:"reports/report.html"},downloads:{html:"javascript:alert(1)"}})');
+  assert.ok(!t.element('#reportLocations').innerHTML.includes('javascript:'),'download URL restricted to local report route');
   console.log('Dashboard regression scenarios passed: invalid JSON/shape, typed labels, counters, stale results, active scan guard, undefined metrics.');
 })().catch(error=>{console.error(error);process.exitCode=1;});

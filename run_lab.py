@@ -7,11 +7,12 @@ import webbrowser
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 from server import BolaFuzzerHandler
+from bola_fuzzer.run_record import VERSION
 from labs.mock_api.mock_vulnerable_api import MockApiHandler
 from labs.control.service import Handler as ControlHandler
 
 SERVICES = [
-    ('Dashboard',8081,'/api/health',lambda d:d.get('service')=='bola-fuzzer',BolaFuzzerHandler),
+    ('Dashboard',8081,'/api/health',lambda d:d.get('service')=='bola-fuzzer' and d.get('version')==VERSION,BolaFuzzerHandler),
     ('Lab kendaraan',8890,'/health',lambda d:d.get('service')=='mock-vulnerable-api',MockApiHandler),
     ('Lab kontrol',8899,'/openapi.json',lambda d:d.get('info',{}).get('title')=='BOLA control',ControlHandler),
 ]

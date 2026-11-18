@@ -36,7 +36,7 @@ def main():
         print('Buka http://127.0.0.1:8081/ | Laporan: '+str(Path(__file__).resolve().parent/'reports'),flush=True)
         if args.open:webbrowser.open('http://127.0.0.1:8081/')
         if not args.check and owned:
-            print('Biarkan jendela ini aktif selama demo. Ctrl+C untuk menghentikan layanan yang dimulai jendela ini.',flush=True)
+            print('Biarkan jendela ini aktif selama uji. Ctrl+C untuk menghentikan layanan yang dimulai jendela ini.',flush=True)
             threading.Event().wait()
     except KeyboardInterrupt:print('\nMenghentikan layanan milik launcher.',flush=True)
     finally:

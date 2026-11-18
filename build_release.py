@@ -7,9 +7,9 @@ from zipfile import ZipFile, ZipInfo, ZIP_DEFLATED
 
 ROOT = Path(__file__).resolve().parent
 NAME = 'BOLA-Fuzzer-1.0.0'
-TOP = ('.gitattributes','.gitignore','README.md','PANDUAN_DEMO.md','requirements.txt',
-       'main.py','server.py','run_lab.py','run_crapi_demo.py','experiment.py','compare_methods.py',
-       'build_release.py','Mulai-Lab.cmd','Mulai-Lab.ps1','Mulai-crAPI-Demo.cmd')
+TOP = ('.gitattributes','.gitignore','README.md','PANDUAN_UJI.md','requirements.txt',
+       'main.py','server.py','run_lab.py','run_crapi_lab.py','experiment.py','compare_methods.py',
+       'build_release.py','Mulai-Lab.cmd','Mulai-Lab.ps1','Mulai-crAPI-Lab.cmd')
 FOLDERS = ('bola_fuzzer','web','tests','docs','examples','labs/control','labs/mock_api')
 
 
@@ -22,7 +22,10 @@ def build(out):
     manifest = {'application_version':'1.0.0', 'requires':'Python 3.10+',
                 'excluded':'runtime reports, research datasets, accounts, tokens, Git metadata',
                 'files':{name:hashlib.sha256(data).hexdigest() for name,data in payload.items()}}
-    payload['release-manifest.json'] = json.dumps(manifest,indent=2).encode()
+    manifest_bytes = json.dumps(manifest, indent=2).encode()
+    # Keep the unpacked package manifest aligned with the archive manifest.
+    (ROOT/'release-manifest.json').write_bytes(manifest_bytes)
+    payload['release-manifest.json'] = manifest_bytes
     out.parent.mkdir(parents=True,exist_ok=True)
     with ZipFile(out,'w',compression=ZIP_DEFLATED) as archive:
         for name,data in sorted(payload.items()):

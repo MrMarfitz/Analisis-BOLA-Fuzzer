@@ -4,7 +4,7 @@ Rilis aplikasi lokal untuk pengujian BOLA horizontal pada pembacaan GET/JSON, se
 
 ## Menjalankan aplikasi
 
-Ekstrak seluruh paket ZIP ke satu folder. Gunakan Python 3.10 atau lebih baru. Klik `Mulai-Lab.cmd` di Windows atau jalankan `python run_lab.py --open`. Buka http://127.0.0.1:8081/ dan biarkan proses launcher tetap berjalan. Demo bawaan memakai pustaka standar Python tanpa Docker. Launcher dapat memakai Python lingkungan Codex jika tersedia, lalu mencoba Python terpasang.
+Ekstrak seluruh paket ZIP ke satu folder. Gunakan Python 3.10 atau lebih baru. Klik `Mulai-Lab.cmd` di Windows atau jalankan `python run_lab.py --open`. Buka http://127.0.0.1:8081/ dan biarkan proses launcher tetap berjalan. Lab kontrol bawaan memakai pustaka standar Python tanpa Docker. Launcher dapat memakai Python lingkungan Codex jika tersedia, lalu mencoba Python terpasang.
 
 Jika port 8081 masih menjalankan versi lama, tutup proses launcher lama lalu jalankan paket ini. Launcher tidak mematikan proses lain. Status backend versi baru menampilkan `1.0.0`.
 
@@ -21,7 +21,7 @@ Jika port 8081 masih menjalankan versi lama, tutup proses launcher lama lalu jal
 
 ## crAPI dan Docker
 
-Scanner terdiri atas dashboard dan engine Python. crAPI adalah target lab terpisah; Docker menjalankan layanan target. Halaman crAPI tidak perlu tetap terbuka di browser. `Mulai-crAPI-Demo.cmd` menyalakan kembali container crAPI yang telah dipasang dengan nama standar dan port loopback. Launcher tidak memasang Docker, mengunduh image, membuat akun, atau menghapus data.
+Scanner terdiri atas dashboard dan engine Python. crAPI adalah target lab terpisah; Docker menjalankan layanan target. Halaman crAPI tidak perlu tetap terbuka di browser. `Mulai-crAPI-Lab.cmd` menyalakan kembali container crAPI yang telah dipasang dengan nama standar dan port loopback. Launcher tidak memasang Docker, mengunduh image, membuat akun, atau menghapus data.
 
 ## Status rilis dan penelitian
 

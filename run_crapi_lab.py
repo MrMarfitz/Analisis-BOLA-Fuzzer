@@ -1,4 +1,4 @@
-"""Start the existing localhost crAPI containers without pull/reset/recreation."""
+"""Start the existing localhost crAPI lab without pull, reset, or recreation."""
 from pathlib import Path
 import argparse, json, subprocess, sys, time
 from urllib.request import urlopen
@@ -15,7 +15,11 @@ def docker(*args):
 def ready(name):
     info = json.loads(docker('inspect',name))[0]
     state = info['State']
-    return state['Running'] and state.get('Health',{}).get('Status','healthy')=='healthy'
+    # Some supporting containers (for example the chatbot) intentionally do
+    # not declare a Docker healthcheck. A running container is ready in that
+    # case; services that do declare a healthcheck must report healthy.
+    health = state.get('Health')
+    return state['Running'] and (health is None or health.get('Status') == 'healthy')
 
 def wait(name):
     print('Menunggu '+name+'...',flush=True)
@@ -55,6 +59,6 @@ def main():
 if __name__=='__main__':
     try:main()
     except Exception as exc:
-        print('Gagal memulai demo: '+str(exc),file=sys.stderr)
+        print('Gagal memulai lab crAPI: '+str(exc),file=sys.stderr)
         print('Pastikan Docker Desktop aktif. Launcher ini memakai container crAPI yang sudah terpasang; tidak menghapus data.',file=sys.stderr)
         sys.exit(1)
